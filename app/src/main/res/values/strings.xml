@@ -14,6 +14,9 @@
     <string name="pref_description_disable_service">Stop the logging service now
     </string>
 
+    <string name="pref_title_stop_service">Stop Service</string>
+    <string name="pref_notification_service_connected">ARFF is being recorded</string>
+
     <string name="pref_title_file_name">ARFF File Name</string>
     <string name="pref_default_file_name">arff-recorder.arff</string>
 

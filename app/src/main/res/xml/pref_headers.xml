@@ -3,7 +3,7 @@
     <!-- These settings headers are only used on tablets. -->
 
     <header
-        android:fragment="de.uni_passau.fim.arffrecorder.ARFFRecorderActivity$GeneralPreferenceFragment"
+        android:fragment="de.uni_passau.fim.arffrecorder.ArffRecorderActivity$GeneralPreferenceFragment"
         android:icon="@drawable/ic_info_black_24dp"
         android:title="@string/pref_header_general" />
 

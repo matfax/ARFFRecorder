@@ -1,24 +1,19 @@
 package de.uni_passau.fim.arffrecorder;
 
-
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.support.v7.app.ActionBar;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
-import android.preference.RingtonePreference;
-import android.text.TextUtils;
-import android.view.MenuItem;
+import android.preference.SwitchPreference;
+import android.support.v7.app.ActionBar;
+import android.util.Log;
 
 import java.util.List;
 
@@ -33,36 +28,7 @@ import java.util.List;
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class ARFFRecorderActivity extends AppCompatPreferenceActivity {
-    /**
-     * A preference value change listener that updates the preference's summary
-     * to reflect its new value.
-     */
-    private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener() {
-        @Override
-        public boolean onPreferenceChange(Preference preference, Object value) {
-            String stringValue = value.toString();
-
-            if (preference instanceof ListPreference) {
-                // For list preferences, look up the correct display value in
-                // the preference's 'entries' list.
-                ListPreference listPreference = (ListPreference) preference;
-                int index = listPreference.findIndexOfValue(stringValue);
-
-                // Set the summary to reflect the new value.
-                preference.setSummary(
-                        index >= 0
-                                ? listPreference.getEntries()[index]
-                                : null);
-
-            } else {
-                // For all other preferences, set the summary to the value's
-                // simple string representation.
-                preference.setSummary(stringValue);
-            }
-            return true;
-        }
-    };
+public class ArffRecorderActivity extends AppCompatPreferenceActivity {
 
     /**
      * Helper method to determine if the device has an extra-large screen. For
@@ -73,31 +39,26 @@ public class ARFFRecorderActivity extends AppCompatPreferenceActivity {
                 & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
     }
 
-    /**
-     * Binds a preference's summary to its value. More specifically, when the
-     * preference's value is changed, its summary (line of text below the
-     * preference title) is updated to reflect the value. The summary is also
-     * immediately updated upon calling this method. The exact display format is
-     * dependent on the type of preference.
-     *
-     * @see #sBindPreferenceSummaryToValueListener
-     */
-    private static void bindPreferenceSummaryToValue(Preference preference) {
-        // Set the listener to watch for value changes.
-        preference.setOnPreferenceChangeListener(sBindPreferenceSummaryToValueListener);
-
-        // Trigger the listener immediately with the preference's
-        // current value.
-        sBindPreferenceSummaryToValueListener.onPreferenceChange(preference,
-                PreferenceManager
-                        .getDefaultSharedPreferences(preference.getContext())
-                        .getString(preference.getKey(), ""));
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupActionBar();
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        Boolean serviceEnabled = preferences.getBoolean(ArffGlobals.ARFF_ENABLE_SERVICE,
+                ArffGlobals.ARFF_DEFAULT_ENABLE_SERVICE);
+        if (serviceEnabled) {
+            Log.i(getLocalClassName(), "Service is to be started.");
+            Intent serviceIntent = new Intent(ArffRecorderActivity.this, ArffService.class);
+            startService(serviceIntent);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean onIsMultiPane() {
+        return isXLargeTablet(this);
     }
 
     /**
@@ -109,14 +70,6 @@ public class ARFFRecorderActivity extends AppCompatPreferenceActivity {
             // Show the Up button in the action bar.
             actionBar.setDisplayHomeAsUpEnabled(true);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onIsMultiPane() {
-        return isXLargeTablet(this);
     }
 
     /**
@@ -146,7 +99,47 @@ public class ARFFRecorderActivity extends AppCompatPreferenceActivity {
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
+            build();
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            // Refresh the UI in case the service has been stopped via the notification.
+            refresh();
+        }
+
+        /**
+         * Refresh the UI without closing the fragment.
+         */
+        private void refresh() {
+            setPreferenceScreen(null);
+            build();
+        }
+
+        /**
+         * Load the UI and its listeners.
+         */
+        private void build() {
             addPreferencesFromResource(R.xml.pref_general);
+
+            SwitchPreference enableService = (SwitchPreference) findPreference(ArffGlobals.ARFF_ENABLE_SERVICE);
+
+            enableService.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                @Override
+                public boolean onPreferenceChange(Preference preference, Object prefObject) {
+                    Boolean enabled = (Boolean) prefObject;
+                    Intent serviceIntent = new Intent(getActivity(), ArffService.class);
+                    if (enabled) {
+                        Log.i(getActivity().getLocalClassName(), "Service is to be started.");
+                        getActivity().startService(serviceIntent);
+                    } else {
+                        Log.i(getActivity().getLocalClassName(), "Service is to be stopped.");
+                        getActivity().stopService(serviceIntent);
+                    }
+                    return true;
+                }
+            });
         }
     }
 }

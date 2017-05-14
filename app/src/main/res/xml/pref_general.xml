@@ -15,7 +15,7 @@
         android:capitalize="words"
         android:defaultValue="@string/pref_default_file_name"
         android:inputType="textCapWords"
-        android:key="example_text"
+        android:key="file_name"
         android:maxLines="1"
         android:selectAllOnFocus="true"
         android:singleLine="true"
@@ -24,7 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:defaultValue="true"
-        android:key="switch_preference_1"
+        android:key="service_notifications"
         android:summary="@string/pref_description_service_notifications"
         android:title="@string/pref_title_service_notifications" />
 
