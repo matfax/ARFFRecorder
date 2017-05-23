@@ -5,6 +5,10 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -118,12 +122,19 @@ public class ArffService extends Service {
         }
     }
 
-    private final class ArffServiceHandler extends Handler {
+    private final class ArffServiceHandler extends Handler implements SensorEventListener {
+
+        private final SensorManager sensorManager;
+        private final Sensor accelerometer;
+
+        private float last_x, last_y, last_z;
 
         private Boolean isRunning = false;
 
         ArffServiceHandler(Looper looper) {
             super(looper);
+            sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
 
         @Override
@@ -131,15 +142,21 @@ public class ArffService extends Service {
             if (msg.arg2 == HANDLER_START) {
                 isRunning = true;
                 Message emptyMsg = arffServiceHandler.obtainMessage();
-                handleMessage(emptyMsg);
+                sensorManager.registerListener(this, accelerometer,
+                        SensorManager.SENSOR_DELAY_FASTEST);
+                sendMessage(emptyMsg);
             } else if (msg.arg2 == HANDLER_STOP) {
                 isRunning = false;
+                sensorManager.unregisterListener(this);
                 Log.i(SERVICE_NAME, "Service thread is to be stopped.");
             } else {
                 try {
-                    Log.i(SERVICE_NAME, "Service is running...");
-                    SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-                    Boolean showNotifications = preferences.getBoolean(ArffGlobals.ARFF_SERVICE_NOTIFICATIONS,
+                    Log.i(SERVICE_NAME, String.format("Last measurement: x = %s, y = %s, z = %s",
+                            last_x, last_y, last_z));
+                    SharedPreferences preferences = PreferenceManager
+                            .getDefaultSharedPreferences(getBaseContext());
+                    Boolean showNotifications = preferences.getBoolean(
+                            ArffGlobals.ARFF_SERVICE_NOTIFICATIONS,
                             ArffGlobals.ARFF_DEFAULT_SERVICE_NOTIFICATIONS);
                     if (showNotifications && !isNotified) {
                         showNotification();
@@ -158,6 +175,24 @@ public class ArffService extends Service {
                     Log.i(SERVICE_NAME, "Service thread stopped.");
                 }
             }
+        }
+
+        @Override
+        public void onSensorChanged(SensorEvent sensorEvent) {
+            Sensor changeSensor = sensorEvent.sensor;
+
+            if (changeSensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                last_x = sensorEvent.values[0];
+                last_y = sensorEvent.values[1];
+                last_z = sensorEvent.values[2];
+
+                long curTime = System.currentTimeMillis() - System.nanoTime() / 1000000;
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
         }
     }
 
